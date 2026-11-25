@@ -1,8 +1,8 @@
 // MyLife — service worker: app shell offline + cache de bibliotecas/fontes.
 // NUNCA cacheia: Supabase (dados do usuário), modelos de IA (o WebLLM tem cache próprio).
-const CACHE = "mylife-v2";
-const SHELL = ["/", "/index.html", "/manifest.json", "/ai/engine.js", "/ai/llm.js",
-  "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"];
+const CACHE = "mylife-v4";
+const SHELL = ["./", "index.html", "manifest.json", "engine.js", "llm.js",
+  "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 const CDN_HOSTS = ["cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
 const SUPABASE_LIB = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
 
@@ -41,7 +41,7 @@ self.addEventListener("fetch", (e) => {
     if (cached) { e.waitUntil(network); return cached; }
     const res = await network;
     if (res) return res;
-    if (req.mode === "navigate") return (await cache.match("/index.html")) || Response.error();
+    if (req.mode === "navigate") return (await cache.match("index.html")) || Response.error();
     return Response.error();
   })());
 });
