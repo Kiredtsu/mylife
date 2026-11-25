@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0c0e13">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>MyLife</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" crossorigin="anonymous" onerror="void 0"></script>
+<script src="/ai/engine.js"></script>
+<script src="/ai/llm.js"></script>
+<style>
+:root{
+  --bg:#0c0e13; --bg-grad: radial-gradient(1200px 600px at 100% -10%, #151a26 0%, #0c0e13 60%);
+  --surface:#161922; --surface2:#1d212c; --border:#272c38;
+  --text:#ece9e2; --muted:#949db0; --accent:#d9ad5a; --accent-soft:#2a2110; --accent-ink:#241b08;
+  --good:#5fbb8f; --bad:#e2685f; --radius:18px; --radius-sm:10px;
+  --shadow: 0 10px 30px -12px rgba(0,0,0,.45);
+  color-scheme: dark;
+}
+:root[data-theme="light"]{
+  --bg:#f6f3ec; --bg-grad: radial-gradient(1200px 600px at 100% -10%, #fffdf8 0%, #f6f3ec 60%);
+  --surface:#ffffff; --surface2:#f1ede3;
+  --border:#e4ddcd; --text:#201c15; --muted:#726a58; --accent:#b7853a; --accent-soft:#f3e3c2; --accent-ink:#fffaf0;
+  --shadow: 0 10px 30px -14px rgba(90,70,30,.18);
+  color-scheme: light;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg-grad); background-color:var(--bg); background-attachment:fixed; color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:'Fraunces',Georgia,"Iowan Old Style",serif; font-weight:600; margin:0; letter-spacing:-.2px;}
+button{font-family:inherit;}
+.app{display:flex; height:100vh; height:100dvh; overflow:hidden;}
+
+/* AUTH */
+#authScreen{position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; background:var(--bg-grad); background-color:var(--bg);}
+.auth-card{width:min(360px,90vw); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px; box-shadow:var(--shadow);}
+.auth-card h1{font-size:24px; margin-bottom:4px;}
+.auth-card p{color:var(--muted); font-size:13px; margin:0 0 18px;}
+.auth-card input{width:100%; margin-bottom:10px;}
+.auth-card .btn{width:100%; margin-top:4px;}
+.auth-switch{text-align:center; margin-top:14px; font-size:13px; color:var(--muted);}
+.auth-switch a{color:var(--accent); cursor:pointer; text-decoration:underline;}
+.auth-error{color:var(--bad); font-size:12.5px; margin-top:8px; min-height:14px;}
+.sync-dot{width:7px;height:7px;border-radius:50%; background:var(--good); display:inline-block; margin-right:6px;}
+.sync-dot.off{background:var(--bad);}
+
+/* Sidebar */
+.sidebar{
+  width:240px; background:var(--surface); border-right:1px solid var(--border);
+  padding:20px 14px; display:flex; flex-direction:column; gap:3px;
+  transition:transform .28s ease; flex-shrink:0;
+  padding-top:calc(20px + env(safe-area-inset-top,0px));
+  box-shadow: var(--shadow);
+}
+.brand{font-family:'Fraunces',Georgia,serif; font-size:21px; letter-spacing:.2px; margin:4px 10px 22px; display:flex; align-items:center; gap:9px; font-weight:600;}
+.brand .dot{width:9px;height:9px;border-radius:50%;background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft);}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:var(--radius-sm);
+  color:var(--muted); cursor:pointer; font-size:14.5px; border:none; background:none; text-align:left; width:100%;
+  position:relative;
+}
+.nav-item svg{width:17px;height:17px; flex-shrink:0;}
+.nav-item:hover{background:var(--surface2); color:var(--text);}
+.nav-item.active{background:var(--surface2); color:var(--text); font-weight:600;}
+.nav-item.active::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;border-radius:3px;background:var(--accent);}
+.sidebar-foot{margin-top:auto; padding:10px 12px; font-size:11.5px; color:var(--muted); display:flex; align-items:center;}
+
+/* Main */
+.main{flex:1; overflow-y:auto; padding:22px 26px 60px;}
+.topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;}
+.menu-btn{display:none; background:var(--surface); border:1px solid var(--border); border-radius:10px; width:38px;height:38px; color:var(--text); font-size:18px;}
+.view-title{font-size:23px;}
+.theme-toggle{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:7px 14px; color:var(--text); font-size:13px; cursor:pointer;}
+
+.view{display:none;}
+.view.active{display:block;}
+
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; margin-bottom:20px;}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; box-shadow:var(--shadow);}
+.stat-label{font-size:12px; color:var(--muted); margin-bottom:7px; letter-spacing:.2px;}
+.stat-value{font-size:27px; font-family:'Fraunces',Georgia,serif; font-weight:500; letter-spacing:-.3px;}
+.stat-value.good{color:var(--good);} .stat-value.bad{color:var(--bad);}
+
+.section-row{display:flex; align-items:center; justify-content:space-between; margin:26px 0 12px;}
+.section-row h2{font-size:17px;}
+
+.list-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow);}
+.list-row{display:flex; align-items:center; justify-content:space-between; padding:13px 16px; border-bottom:1px solid var(--border); font-size:14px; gap:10px;}
+.list-row:last-child{border-bottom:none;}
+.list-row .meta{color:var(--muted); font-size:12.5px;}
+.tag{font-size:11px; padding:3px 9px; border-radius:20px; background:var(--surface2); color:var(--muted);}
+.amt-in{color:var(--good); font-weight:600;} .amt-out{color:var(--bad); font-weight:600;}
+.empty{padding:30px 16px; text-align:center; color:var(--muted); font-size:13.5px;}
+
+.btn{background:var(--accent); color:var(--accent-ink); border:none; border-radius:11px; padding:10px 18px; font-size:13.5px; font-weight:600; cursor:pointer; box-shadow:0 6px 16px -8px rgba(217,173,90,.55);}
+.btn.ghost{background:transparent; color:var(--text); border:1px solid var(--border); font-weight:500;}
+.btn.small{padding:6px 11px; font-size:12px; border-radius:8px;}
+.btn.danger{background:var(--bad); color:#fff;}
+
+form.inline{display:flex; flex-wrap:wrap; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:18px;}
+form.inline .field{display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--muted); flex:1; min-width:120px;}
+input,select,textarea{
+  background:var(--surface2); border:1px solid var(--border); color:var(--text);
+  border-radius:9px; padding:9px 11px; font-size:14px; font-family:inherit;
+}
+textarea{resize:vertical;}
+.type-toggle{display:flex; gap:6px;}
+.type-toggle button{flex:1; padding:9px; border-radius:9px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:13px; cursor:pointer;}
+.type-toggle button.sel-in{background:var(--good); color:#06180f; border-color:var(--good);}
+.type-toggle button.sel-out{background:var(--bad); color:#2a0a08; border-color:var(--bad);}
+
+.filters{display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+.filters select{font-size:13px;}
+
+.chart{display:flex; align-items:flex-end; gap:10px; height:140px; padding:10px 4px;}
+.chart .bar-wrap{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;}
+.chart .bar{width:100%; border-radius:6px 6px 0 0; background:var(--accent);}
+.chart .bar-label{font-size:11px; color:var(--muted);}
+
+.priority{width:7px;height:7px;border-radius:50%; flex-shrink:0;}
+.p-alta{background:var(--bad);} .p-media{background:var(--accent);} .p-baixa{background:var(--good);}
+.task-text.done{text-decoration:line-through; color:var(--muted);}
+.checkbox{width:19px;height:19px; border:1.5px solid var(--border); border-radius:6px; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--surface2);}
+.checkbox.checked{background:var(--good); border-color:var(--good);}
+.progress-track{width:100%;height:8px;border-radius:5px;background:var(--surface2);overflow:hidden;margin:8px 0;}
+.progress-fill{height:100%;background:var(--accent);border-radius:5px;}
+.piggy-card{display:flex;flex-direction:column;gap:6px;}
+.piggy-top{display:flex;justify-content:space-between;align-items:flex-start;}
+.piggy-actions{display:flex;gap:8px;margin-top:6px;}
+.status-pill{font-size:11px;padding:3px 9px;border-radius:20px;}
+.status-ativa{background:rgba(91,185,140,.18);color:var(--good);}
+.status-cancelada{background:rgba(226,104,95,.18);color:var(--bad);}
+
+/* ASSISTENTE */
+.chat-wrap{display:flex; flex-direction:column; height:calc(100dvh - 160px); max-height:620px;}
+.chat-log{flex:1; overflow-y:auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:var(--shadow);}
+.msg{max-width:80%; padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.45; white-space:pre-wrap;}
+.msg.user{align-self:flex-end; background:var(--accent); color:var(--accent-ink); border-bottom-right-radius:4px;}
+.msg.ai{align-self:flex-start; background:var(--surface2); border:1px solid var(--border); border-bottom-left-radius:4px;}
+.chat-form{display:flex; gap:10px; margin-top:12px;}
+.ai-bar{display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; color:var(--muted); margin-bottom:10px;}
+.ai-bar .btn{padding:6px 12px; font-size:12px; white-space:nowrap;}
+.chat-form input{flex:1;}
+
+@media (max-width:760px){
+  .sidebar{position:fixed; z-index:30; top:0; left:0; bottom:0; transform:translateX(-100%); box-shadow:0 0 30px rgba(0,0,0,.4);}
+  .sidebar.open{transform:translateX(0);}
+  .menu-btn{display:block;}
+  .overlay{display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:20;}
+  .overlay.show{display:block;}
+}
+</style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="authScreen">
+  <div class="auth-card">
+    <h1>MyLife</h1>
+    <p id="authSubtitle">Entre para sincronizar seus dados na nuvem.</p>
+    <input type="email" id="authEmail" placeholder="E-mail" autocomplete="username">
+    <input type="password" id="authPass" placeholder="Senha" autocomplete="current-password">
+    <button class="btn" id="authSubmit">Entrar</button>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-switch">
+      <span id="authSwitchText">Ainda não tem conta?</span>
+      <a id="authSwitchLink">Criar conta</a>
+    </div>
+    <div class="auth-switch"><a id="authLocal">Continuar sem conta (dados só neste aparelho)</a></div>
+  </div>
+</div>
+
+<div class="app" id="appRoot" style="display:none;">
+  <div class="overlay" id="overlay"></div>
+  <nav class="sidebar" id="sidebar">
+    <div class="brand"><span class="dot"></span><strong>MyLife</strong></div>
+    <button class="nav-item active" data-view="dashboard">⌂ Início</button>
+    <button class="nav-item" data-view="financeiro">◎ Financeiro</button>
+    <button class="nav-item" data-view="cofrinhos">🐷 Cofrinhos</button>
+    <button class="nav-item" data-view="assinaturas">⟳ Assinaturas</button>
+    <button class="nav-item" data-view="tarefas">☑ Tarefas</button>
+    <button class="nav-item" data-view="patrimonio">◆ Patrimônio</button>
+    <button class="nav-item" data-view="contagem">⏳ Contagem Regressiva</button>
+    <button class="nav-item" data-view="assistente">✦ Assistente IA</button>
+    <button class="nav-item" data-view="config">⚙ Configurações</button>
+    <div class="sidebar-foot"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Sincronizado</span></div>
+  </nav>
+
+  <main class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <h1 class="view-title" id="viewTitle">Início</h1>
+      </div>
+      <button class="theme-toggle" id="themeBtn">Modo claro</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="grid">
+        <div class="card"><div class="stat-label">Saldo atual</div><div class="stat-value" id="dashSaldo">€0,00</div></div>
+        <div class="card"><div class="stat-label">Entradas no mês</div><div class="stat-value good" id="dashIn">€0,00</div></div>
+        <div class="card"><div class="stat-label">Saídas no mês</div><div class="stat-value bad" id="dashOut">€0,00</div></div>
+        <div class="card"><div class="stat-label">Tarefas pendentes</div><div class="stat-value" id="dashTasks">0</div></div>
+      </div>
+      <div class="section-row"><h2>Últimos 6 meses</h2></div>
+      <div class="card"><div class="chart" id="chart6"></div></div>
+      <div class="section-row"><h2>Movimentações recentes</h2></div>
+      <div class="list-card" id="dashRecent"></div>
+    </section>
+
+    <!-- FINANCEIRO -->
+    <section class="view" id="view-financeiro">
+      <div class="grid">
+        <div class="card"><div class="stat-label">Saldo</div><div class="stat-value" id="finSaldo">€0,00</div></div>
+        <div class="card"><div class="stat-label">Entradas (filtro)</div><div class="stat-value good" id="finIn">€0,00</div></div>
+        <div class="card"><div class="stat-label">Saídas (filtro)</div><div class="stat-value bad" id="finOut">€0,00</div></div>
+      </div>
+      <form class="inline" id="formTx">
+        <div class="field" style="flex:0 0 140px;">
+          <label>Tipo</label>
+          <div class="type-toggle">
+            <button type="button" id="btnIn" class="sel-in">Entrada</button>
+            <button type="button" id="btnOut">Saída</button>
+          </div>
+        </div>
+        <div class="field" style="flex:0 0 120px;"><label>Valor (€)</label><input type="number" step="0.01" id="txValor" required></div>
+        <div class="field"><label>Descrição</label><input type="text" id="txDesc" placeholder="Ex: Supermercado" required></div>
+        <div class="field" style="flex:0 0 150px;"><label>Categoria</label>
+          <select id="txCat">
+            <option>Alimentação</option><option>Transporte</option><option>Moradia</option>
+            <option>Saúde</option><option>Lazer</option><option>Compras</option>
+            <option>Salário</option><option>Trabalho extra</option><option>Investimentos</option><option>Outros</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0 0 140px;"><label>Data</label><input type="date" id="txData"></div>
+        <div class="field" style="flex:0 0 100px; justify-content:flex-end;"><button class="btn" type="submit">Adicionar</button></div>
+      </form>
+      <div class="filters">
+        <select id="filterPeriodo">
+          <option value="mes">Este mês</option><option value="semana">Esta semana</option>
+          <option value="ano">Este ano</option><option value="tudo">Tudo</option>
+        </select>
+      </div>
+      <div class="list-card" id="txList"></div>
+    </section>
+
+    <!-- TAREFAS -->
+    <section class="view" id="view-tarefas">
+      <form class="inline" id="formTask">
+        <div class="field"><label>Tarefa</label><input type="text" id="taskNome" placeholder="O que precisa ser feito?" required></div>
+        <div class="field" style="flex:0 0 150px;"><label>Prazo</label><input type="date" id="taskData"></div>
+        <div class="field" style="flex:0 0 130px;"><label>Prioridade</label>
+          <select id="taskPrio"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option></select>
+        </div>
+        <div class="field" style="flex:0 0 100px; justify-content:flex-end;"><button class="btn" type="submit">Adicionar</button></div>
+      </form>
+      <div class="filters">
+        <select id="filterTask">
+          <option value="todas">Todas</option><option value="pendentes">Pendentes</option>
+          <option value="concluidas">Concluídas</option><option value="atrasadas">Atrasadas</option>
+        </select>
+      </div>
+      <div class="list-card" id="taskList"></div>
+    </section>
+
+    <!-- COFRINHOS -->
+    <section class="view" id="view-cofrinhos">
+      <form class="inline" id="formPiggy">
+        <div class="field"><label>Nome do cofrinho</label><input type="text" id="pgNome" placeholder="Ex: Viagem" required></div>
+        <div class="field" style="flex:0 0 130px;"><label>Valor desejado (€)</label><input type="number" step="0.01" id="pgMeta" required></div>
+        <div class="field" style="flex:0 0 150px;"><label>Data limite</label><input type="date" id="pgPrazo"></div>
+        <div class="field"><label>Descrição</label><input type="text" id="pgDesc" placeholder="Opcional"></div>
+        <div class="field" style="flex:0 0 100px; justify-content:flex-end;"><button class="btn" type="submit">Criar</button></div>
+      </form>
+      <div class="grid" id="pigList"></div>
+    </section>
+
+    <!-- ASSINATURAS -->
+    <section class="view" id="view-assinaturas">
+      <div class="grid">
+        <div class="card"><div class="stat-label">Total mensal em assinaturas</div><div class="stat-value bad" id="subTotalMes">€0,00</div></div>
+      </div>
+      <form class="inline" id="formSub">
+        <div class="field"><label>Serviço</label><input type="text" id="subNome" placeholder="Ex: Netflix" required></div>
+        <div class="field" style="flex:0 0 110px;"><label>Valor (€)</label><input type="number" step="0.01" id="subValor" required></div>
+        <div class="field" style="flex:0 0 140px;"><label>Frequência</label>
+          <select id="subFreq"><option value="semanal">Semanal</option><option value="mensal" selected>Mensal</option><option value="trimestral">Trimestral</option><option value="anual">Anual</option></select>
+        </div>
+        <div class="field" style="flex:0 0 150px;"><label>Próxima cobrança</label><input type="date" id="subData" required></div>
+        <div class="field" style="flex:0 0 150px;"><label>Forma de pagamento</label><input type="text" id="subPagto" placeholder="Ex: Cartão"></div>
+        <div class="field" style="flex:0 0 100px; justify-content:flex-end;"><button class="btn" type="submit">Adicionar</button></div>
+      </form>
+      <div class="list-card" id="subList"></div>
+    </section>
+
+    <!-- PATRIMÔNIO -->
+    <section class="view" id="view-patrimonio">
+      <div class="grid">
+        <div class="card"><div class="stat-label">Patrimônio líquido</div><div class="stat-value" id="patLiquido">€0,00</div></div>
+        <div class="card"><div class="stat-label">Saldo em conta</div><div class="stat-value" id="patSaldo">€0,00</div></div>
+        <div class="card"><div class="stat-label">Nos cofrinhos</div><div class="stat-value" id="patCofrinhos">€0,00</div></div>
+        <div class="card"><div class="stat-label">Dívidas</div><div class="stat-value bad" id="patDividas">€0,00</div></div>
+      </div>
+      <div class="card" style="max-width:420px;margin-bottom:18px;">
+        <div class="section-row" style="margin-top:0;"><h2>Outros ativos (atualize manualmente)</h2></div>
+        <div class="field" style="margin-bottom:10px;"><label style="font-size:12px;color:var(--muted);">Dinheiro em espécie</label><br><input type="number" step="0.01" id="patEspecie" style="width:100%;margin-top:5px;"></div>
+        <div class="field" style="margin-bottom:10px;"><label style="font-size:12px;color:var(--muted);">Investimentos</label><br><input type="number" step="0.01" id="patInvest" style="width:100%;margin-top:5px;"></div>
+        <div class="field" style="margin-bottom:10px;"><label style="font-size:12px;color:var(--muted);">Bens (imóveis, veículos etc.)</label><br><input type="number" step="0.01" id="patBens" style="width:100%;margin-top:5px;"></div>
+        <div class="field" style="margin-bottom:10px;"><label style="font-size:12px;color:var(--muted);">Dívidas totais</label><br><input type="number" step="0.01" id="patDividasInput" style="width:100%;margin-top:5px;"></div>
+        <button class="btn" id="patSalvar">Salvar e registrar evolução</button>
+      </div>
+      <div class="section-row"><h2>Evolução mensal</h2></div>
+      <div class="card"><div class="chart" id="patChart"></div></div>
+    </section>
+
+    <!-- CONTAGEM REGRESSIVA -->
+    <section class="view" id="view-contagem">
+      <form class="inline" id="formEvento">
+        <div class="field"><label>Nome do evento</label><input type="text" id="evNome" placeholder="Ex: Viagem a Lisboa" required></div>
+        <div class="field" style="flex:0 0 190px;"><label>Data e hora</label><input type="datetime-local" id="evData" required></div>
+        <div class="field"><label>Descrição</label><input type="text" id="evDesc" placeholder="Opcional"></div>
+        <div class="field" style="flex:0 0 100px; justify-content:flex-end;"><button class="btn" type="submit">Adicionar</button></div>
+      </form>
+      <div class="grid" id="evList"></div>
+    </section>
+
+    <!-- ASSISTENTE IA -->
+    <section class="view" id="view-assistente">
+      <div class="chat-wrap">
+        <div class="ai-bar"><span id="aiStatus"></span><button class="btn ghost" id="aiBtn" type="button"></button></div>
+        <div class="chat-log" id="chatLog">
+          <div class="msg ai">Olá! Pergunte sobre seu saldo, tarefas pendentes, cofrinhos ou assinaturas — eu vejo seus dados atuais para responder.</div>
+        </div>
+        <form class="chat-form" id="formChat">
+          <input type="text" id="chatInput" placeholder="Pergunte algo..." required>
+          <button class="btn" type="submit">Enviar</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- CONFIGURAÇÕES -->
+    <section class="view" id="view-config">
+      <div class="card" style="max-width:420px;">
+        <div class="section-row" style="margin-top:0;"><h2>Preferências</h2></div>
+        <div class="field" style="margin-bottom:14px;"><label style="font-size:12px;color:var(--muted);">Nome do aplicativo</label><br>
+          <input type="text" id="cfgNome" style="width:100%;margin-top:5px;"></div>
+        <div class="field" style="margin-bottom:14px;"><label style="font-size:12px;color:var(--muted);">Moeda</label><br>
+          <select id="cfgMoeda" style="width:100%;margin-top:5px;"><option value="EUR">EUR (€)</option><option value="BRL">BRL (R$)</option><option value="USD">USD ($)</option></select></div>
+        <div class="field" style="margin-bottom:14px;"><label style="font-size:12px;color:var(--muted);">Saldo inicial</label><br>
+          <input type="number" step="0.01" id="cfgSaldoInicial" style="width:100%;margin-top:5px;"></div>
+        <button class="btn" id="cfgSalvar">Salvar</button>
+        <hr style="border-color:var(--border); margin:20px 0;">
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;" id="cfgEmail"></div>
+        <button class="btn ghost" id="cfgLogout">Sair da conta</button>
+        <hr style="border-color:var(--border); margin:20px 0;">
+        <button class="btn danger" id="cfgApagar">Apagar todos os meus dados</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURAÇÃO DO SUPABASE
+   Preencha com os dados do seu projeto (ver README.md)
+   ========================================================= */
+const SUPABASE_URL = "COLE_AQUI_A_SUA_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "COLE_AQUI_A_SUA_SUPABASE_ANON_KEY";
+let sb = null; // Supabase é opcional: sem chaves ou sem biblioteca, o app roda 100% local
+try{ if(window.supabase && !SUPABASE_URL.startsWith("COLE_")) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }catch(e){ sb = null; }
+
+/* =========================================================
+   ESTADO LOCAL (espelha a linha do Supabase do usuário logado)
+   ========================================================= */
+function emptyDB(){
+  return { tx:[], tasks:[], cofrinhos:[], subs:[],
+    patrimonio:{ especie:0, investimentos:0, bens:0, dividas:0, historico:[] },
+    eventos:[], config:{ nome:"MyLife", moeda:"EUR", saldoInicial:0, tema:"dark" } };
+}
+let DB = emptyDB();
+let currentUser = null;
+let saveTimer = null;
+
+const LS_KEY = "mylife_db_v1";
+let dbUpdatedAt = "";
+function loadLocal(){ try{ const r = JSON.parse(localStorage.getItem(LS_KEY)); return r && r.data ? r : null; }catch(e){ return null; } }
+function saveLocal(){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ data:DB, updatedAt:dbUpdatedAt })); }catch(e){} }
+
+function setSyncStatus(ok){
+  document.getElementById("syncDot").classList.toggle("off", !!sb && !ok);
+  document.getElementById("syncLabel").textContent = !sb ? "Salvo no aparelho" : (ok ? "Sincronizado" : "Salvo no aparelho (offline)");
+}
+
+async function loadDBFromCloud(){
+  try{
+    const { data, error } = await sb.from("user_data").select("data,updated_at").eq("user_id", currentUser.id).maybeSingle();
+    if(error) throw error;
+    setSyncStatus(true);
+    return data && data.data && Object.keys(data.data).length ? data : null;
+  }catch(e){ setSyncStatus(false); return null; }
+}
+
+async function pushCloud(){
+  if(!sb || !currentUser) return;
+  try{
+    const { error } = await sb.from("user_data").upsert({ user_id: currentUser.id, data: DB, updated_at: dbUpdatedAt });
+    setSyncStatus(!error);
+  }catch(e){ setSyncStatus(false); }
+}
+
+function saveDB(){
+  dbUpdatedAt = new Date().toISOString();
+  saveLocal();                              // sempre grava no aparelho, na hora
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(pushCloud, 600);   // e sincroniza com a nuvem quando possível
+}
+window.addEventListener("online", pushCloud);
+
+if(!DB.config) DB.config = { nome:"MyLife", moeda:"EUR", saldoInicial:0, tema:"dark" };
+if(!DB.cofrinhos) DB.cofrinhos = [];
+if(!DB.subs) DB.subs = [];
+if(!DB.patrimonio) DB.patrimonio = { especie:0, investimentos:0, bens:0, dividas:0, historico:[] };
+if(!DB.eventos) DB.eventos = [];
+
+const moedaSymbols = { EUR:"€", BRL:"R$", USD:"$" };
+function fmt(v){
+  const s = moedaSymbols[DB.config.moeda] || "€";
+  return s + Number(v||0).toLocaleString("pt-PT",{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* =========================================================
+   AUTENTICAÇÃO
+   ========================================================= */
+let authMode = "login"; // ou "signup"
+const authEmail = document.getElementById("authEmail");
+const authPass = document.getElementById("authPass");
+const authError = document.getElementById("authError");
+const authSubmit = document.getElementById("authSubmit");
+const authSwitchLink = document.getElementById("authSwitchLink");
+const authSwitchText = document.getElementById("authSwitchText");
+const authSubtitle = document.getElementById("authSubtitle");
+
+authSwitchLink.addEventListener("click", ()=>{
+  authMode = authMode === "login" ? "signup" : "login";
+  authSubmit.textContent = authMode === "login" ? "Entrar" : "Criar conta";
+  authSwitchText.textContent = authMode === "login" ? "Ainda não tem conta?" : "Já tem conta?";
+  authSwitchLink.textContent = authMode === "login" ? "Criar conta" : "Entrar";
+  authSubtitle.textContent = authMode === "login" ? "Entre para sincronizar seus dados na nuvem." : "Crie sua conta para começar a sincronizar.";
+  authError.textContent = "";
+});
+
+authSubmit.addEventListener("click", async ()=>{
+  authError.textContent = "";
+  const email = authEmail.value.trim();
+  const password = authPass.value;
+  if(!email || !password){ authError.textContent = "Preencha e-mail e senha."; return; }
+  if(!sb){ authError.style.color = "var(--bad)"; authError.textContent = "Sincronização não configurada. Use \"Continuar sem conta\"."; return; }
+  authSubmit.disabled = true;
+  try{
+    if(authMode === "login"){
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+    } else {
+      const { error } = await sb.auth.signUp({ email, password });
+      if(error) throw error;
+      authError.style.color = "var(--good)";
+      authError.textContent = "Conta criada! Se pedir confirmação, confira seu e-mail e depois faça login.";
+    }
+  }catch(e){
+    authError.style.color = "var(--bad)";
+    authError.textContent = e.message || "Erro ao autenticar.";
+  }
+  authSubmit.disabled = false;
+});
+
+document.getElementById("cfgLogout").addEventListener("click", async ()=>{
+  if(sb) await sb.auth.signOut();
+});
+
+function startApp(){
+  document.getElementById("authScreen").style.display = "none";
+  document.getElementById("appRoot").style.display = "flex";
+  document.getElementById("cfgEmail").textContent = currentUser ? "Conectado como " + currentUser.email : "Modo local — dados só neste aparelho";
+  document.getElementById("cfgLogout").style.display = currentUser ? "" : "none";
+  loadConfigForm(); loadPatForm(); applyTheme(); renderAll(); setSyncStatus(!!currentUser && navigator.onLine);
+}
+function useLocal(){
+  const l = loadLocal();
+  DB = l ? { ...emptyDB(), ...l.data } : emptyDB();
+  dbUpdatedAt = l ? (l.updatedAt || "") : "";
+}
+document.getElementById("authLocal").addEventListener("click", ()=>{ currentUser = null; useLocal(); startApp(); });
+
+// Chamado no FINAL do script (depois de todas as declarações)
+function boot(){
+  if(!sb){ useLocal(); startApp(); return; }
+  sb.auth.onAuthStateChange(async (_event, session)=>{
+    if(session && session.user){
+      currentUser = session.user;
+      useLocal();
+      const cloud = await loadDBFromCloud();
+      if(cloud && (!dbUpdatedAt || cloud.updated_at > dbUpdatedAt)){ DB = { ...emptyDB(), ...cloud.data }; dbUpdatedAt = cloud.updated_at; saveLocal(); }
+      else if(dbUpdatedAt){ pushCloud(); }
+      startApp();
+    } else {
+      currentUser = null;
+      if(!navigator.onLine && loadLocal()){ useLocal(); startApp(); }  // aberto sem internet: usa os dados do aparelho
+      else { document.getElementById("authScreen").style.display = "flex"; document.getElementById("appRoot").style.display = "none"; }
+    }
+  });
+}
+
+/* =========================================================
+   TEMA
+   ========================================================= */
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", DB.config.tema === "light" ? "light" : "dark");
+  document.getElementById("themeBtn").textContent = DB.config.tema === "light" ? "Modo escuro" : "Modo claro";
+}
+document.getElementById("themeBtn").addEventListener("click", ()=>{
+  DB.config.tema = DB.config.tema === "light" ? "dark" : "light";
+  applyTheme();
+  saveDB();
+});
+
+/* =========================================================
+   NAVEGAÇÃO
+   ========================================================= */
+const sidebar = document.getElementById("sidebar");
+const overlay = document.getElementById("overlay");
+document.getElementById("menuBtn").addEventListener("click", ()=>{ sidebar.classList.toggle("open"); overlay.classList.toggle("show"); });
+overlay.addEventListener("click", ()=>{ sidebar.classList.remove("open"); overlay.classList.remove("show"); });
+const titles = { dashboard:"Início", financeiro:"Financeiro", cofrinhos:"Meus Cofrinhos", assinaturas:"Minhas Assinaturas", tarefas:"Tarefas", patrimonio:"Meu Patrimônio", contagem:"Contagem Regressiva", assistente:"Assistente IA", config:"Configurações" };
+document.querySelectorAll(".nav-item[data-view]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav-item").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-"+btn.dataset.view).classList.add("active");
+    document.getElementById("viewTitle").textContent = titles[btn.dataset.view];
+    sidebar.classList.remove("open"); overlay.classList.remove("show");
+    renderAll();
+  });
+});
+
+/* =========================================================
+   FINANCEIRO
+   ========================================================= */
+let txType = "entrada";
+const btnIn = document.getElementById("btnIn"), btnOut = document.getElementById("btnOut");
+btnIn.addEventListener("click", ()=>{ txType="entrada"; btnIn.className="sel-in"; btnOut.className=""; });
+btnOut.addEventListener("click", ()=>{ txType="saida"; btnOut.className="sel-out"; btnIn.className=""; });
+document.getElementById("txData").value = todayStr();
+
+document.getElementById("formTx").addEventListener("submit", e=>{
+  e.preventDefault();
+  const valor = parseFloat(document.getElementById("txValor").value);
+  if(!valor || valor<=0) return;
+  DB.tx.push({
+    id:uid(), tipo:txType, valor:valor,
+    desc:document.getElementById("txDesc").value.trim(),
+    cat:document.getElementById("txCat").value,
+    data:document.getElementById("txData").value || todayStr()
+  });
+  saveDB();
+  e.target.reset();
+  document.getElementById("txData").value = todayStr();
+  renderAll();
+});
+
+function deleteTx(id){ DB.tx = DB.tx.filter(t=>t.id!==id); saveDB(); renderAll(); }
+
+function filteredTx(){
+  const periodo = document.getElementById("filterPeriodo").value;
+  const now = new Date();
+  return DB.tx.filter(t=>{
+    const d = new Date(t.data+"T00:00:00");
+    if(periodo==="mes") return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+    if(periodo==="ano") return d.getFullYear()===now.getFullYear();
+    if(periodo==="semana"){ const diff=(now-d)/86400000; return diff>=0 && diff<7; }
+    return true;
+  }).sort((a,b)=> b.data.localeCompare(a.data));
+}
+
+function saldoTotal(){
+  let s = Number(DB.config.saldoInicial||0);
+  DB.tx.forEach(t=> s += t.tipo==="entrada" ? t.valor : -t.valor);
+  return s;
+}
+
+document.getElementById("filterPeriodo").addEventListener("change", renderFinanceiro);
+
+function renderFinanceiro(){
+  const list = filteredTx();
+  let inSum=0, outSum=0;
+  list.forEach(t=> t.tipo==="entrada" ? inSum+=t.valor : outSum+=t.valor);
+  document.getElementById("finSaldo").textContent = fmt(saldoTotal());
+  document.getElementById("finIn").textContent = fmt(inSum);
+  document.getElementById("finOut").textContent = fmt(outSum);
+  const el = document.getElementById("txList");
+  el.innerHTML = list.length ? list.map(t=>`
+    <div class="list-row">
+      <div><div>${escapeHtml(t.desc)}</div><div class="meta">${t.data.split("-").reverse().join("/")} · <span class="tag">${escapeHtml(t.cat)}</span></div></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="${t.tipo==='entrada'?'amt-in':'amt-out'}">${t.tipo==='entrada'?'+':'-'}${fmt(t.valor)}</span>
+        <button class="btn ghost small" onclick="deleteTx('${t.id}')">Excluir</button>
+      </div>
+    </div>`).join("") : `<div class="empty">Nenhuma movimentação neste período.</div>`;
+}
+
+/* =========================================================
+   TAREFAS
+   ========================================================= */
+document.getElementById("formTask").addEventListener("submit", e=>{
+  e.preventDefault();
+  const nome = document.getElementById("taskNome").value.trim();
+  if(!nome) return;
+  DB.tasks.push({ id:uid(), nome, data:document.getElementById("taskData").value, prio:document.getElementById("taskPrio").value, done:false });
+  saveDB(); e.target.reset(); renderAll();
+});
+function toggleTask(id){ const t=DB.tasks.find(x=>x.id===id); if(t){ t.done=!t.done; saveDB(); renderAll(); } }
+function deleteTask(id){ DB.tasks = DB.tasks.filter(t=>t.id!==id); saveDB(); renderAll(); }
+document.getElementById("filterTask").addEventListener("change", renderTarefas);
+
+function renderTarefas(){
+  const filtro = document.getElementById("filterTask").value;
+  const now = todayStr();
+  let list = DB.tasks.slice().sort((a,b)=>(a.data||"9999").localeCompare(b.data||"9999"));
+  if(filtro==="pendentes") list = list.filter(t=>!t.done);
+  if(filtro==="concluidas") list = list.filter(t=>t.done);
+  if(filtro==="atrasadas") list = list.filter(t=>!t.done && t.data && t.data<now);
+  const el = document.getElementById("taskList");
+  el.innerHTML = list.length ? list.map(t=>`
+    <div class="list-row">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="checkbox ${t.done?'checked':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</span>
+        <span class="priority p-${t.prio}"></span>
+        <div><span class="task-text ${t.done?'done':''}">${escapeHtml(t.nome)}</span>
+          <div class="meta">${t.data? t.data.split("-").reverse().join("/") : "sem prazo"}</div></div>
+      </div>
+      <button class="btn ghost small" onclick="deleteTask('${t.id}')">Excluir</button>
+    </div>`).join("") : `<div class="empty">Nenhuma tarefa aqui.</div>`;
+}
+
+/* =========================================================
+   COFRINHOS
+   ========================================================= */
+document.getElementById("formPiggy").addEventListener("submit", e=>{
+  e.preventDefault();
+  const nome = document.getElementById("pgNome").value.trim();
+  const meta = parseFloat(document.getElementById("pgMeta").value);
+  if(!nome || !meta) return;
+  DB.cofrinhos.push({ id:uid(), nome, meta, atual:0, prazo:document.getElementById("pgPrazo").value, desc:document.getElementById("pgDesc").value.trim() });
+  saveDB(); e.target.reset(); renderAll();
+});
+function pigMove(id, sign){
+  const p = DB.cofrinhos.find(x=>x.id===id); if(!p) return;
+  const v = parseFloat(prompt(sign>0?"Quanto depositar?":"Quanto retirar?")||"0");
+  if(!v) return;
+  p.atual = Math.max(0, p.atual + sign*v);
+  saveDB(); renderAll();
+}
+function deletePig(id){ if(confirm("Excluir este cofrinho?")){ DB.cofrinhos = DB.cofrinhos.filter(p=>p.id!==id); saveDB(); renderAll(); } }
+
+function renderCofrinhos(){
+  const el = document.getElementById("pigList");
+  el.innerHTML = DB.cofrinhos.length ? DB.cofrinhos.map(p=>{
+    const pct = Math.min(100, Math.round((p.atual/p.meta)*100)) || 0;
+    return `<div class="card piggy-card">
+      <div class="piggy-top"><div><strong>${escapeHtml(p.nome)}</strong><div class="meta">${fmt(p.atual)} de ${fmt(p.meta)}${p.prazo? " · até "+p.prazo.split("-").reverse().join("/") : ""}</div></div>
+      <button class="btn ghost small" onclick="deletePig('${p.id}')">Excluir</button></div>
+      ${p.desc? `<div class="meta">${escapeHtml(p.desc)}</div>`:""}
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+      <div class="piggy-actions"><button class="btn small" onclick="pigMove('${p.id}',1)">Depositar</button><button class="btn ghost small" onclick="pigMove('${p.id}',-1)">Retirar</button></div>
+    </div>`;
+  }).join("") : `<div class="card empty">Nenhum cofrinho criado ainda.</div>`;
+}
+
+/* =========================================================
+   ASSINATURAS
+   ========================================================= */
+function freqDias(f){ return { semanal:7, mensal:30, trimestral:90, anual:365 }[f] || 30; }
+document.getElementById("formSub").addEventListener("submit", e=>{
+  e.preventDefault();
+  const nome = document.getElementById("subNome").value.trim();
+  const valor = parseFloat(document.getElementById("subValor").value);
+  if(!nome || !valor) return;
+  DB.subs.push({ id:uid(), nome, valor, freq:document.getElementById("subFreq").value, proxima:document.getElementById("subData").value, pagto:document.getElementById("subPagto").value.trim(), status:"ativa", lastPaidPeriod:null });
+  saveDB(); e.target.reset(); renderAll();
+});
+function toggleSub(id){ const s=DB.subs.find(x=>x.id===id); if(s){ s.status = s.status==="ativa"?"cancelada":"ativa"; saveDB(); renderAll(); } }
+function deleteSub(id){ if(confirm("Excluir esta assinatura?")){ DB.subs = DB.subs.filter(s=>s.id!==id); saveDB(); renderAll(); } }
+function paySub(id){
+  const s = DB.subs.find(x=>x.id===id); if(!s) return;
+  if(s.lastPaidPeriod === s.proxima){ alert("Esta cobrança já foi lançada nas despesas."); return; }
+  DB.tx.push({ id:uid(), tipo:"saida", valor:s.valor, desc:"Assinatura: "+s.nome, cat:"Outros", data:s.proxima || todayStr() });
+  s.lastPaidPeriod = s.proxima;
+  const d = new Date((s.proxima||todayStr())+"T00:00:00");
+  d.setDate(d.getDate() + freqDias(s.freq));
+  s.proxima = d.toISOString().slice(0,10);
+  saveDB(); renderAll();
+}
+function renderAssinaturas(){
+  const el = document.getElementById("subList");
+  let totalMes = 0;
+  DB.subs.forEach(s=>{ if(s.status==="ativa"){ const dias=freqDias(s.freq); totalMes += s.valor * (30/dias); } });
+  document.getElementById("subTotalMes").textContent = fmt(totalMes);
+  el.innerHTML = DB.subs.length ? DB.subs.slice().sort((a,b)=>(a.proxima||"").localeCompare(b.proxima||"")).map(s=>`
+    <div class="list-row">
+      <div><div>${escapeHtml(s.nome)} <span class="status-pill status-${s.status}">${s.status==='ativa'?'Ativa':'Cancelada'}</span></div>
+        <div class="meta">${s.freq} · ${s.pagto?escapeHtml(s.pagto)+" · ":""}próxima: ${s.proxima? s.proxima.split("-").reverse().join("/") : "—"}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="amt-out">${fmt(s.valor)}</span>
+        <button class="btn small" onclick="paySub('${s.id}')">Lançar cobrança</button>
+        <button class="btn ghost small" onclick="toggleSub('${s.id}')">${s.status==='ativa'?'Cancelar':'Reativar'}</button>
+        <button class="btn ghost small" onclick="deleteSub('${s.id}')">Excluir</button>
+      </div>
+    </div>`).join("") : `<div class="empty">Nenhuma assinatura cadastrada.</div>`;
+}
+
+/* =========================================================
+   PATRIMÔNIO
+   ========================================================= */
+function cofrinhosTotal(){ return DB.cofrinhos.reduce((s,p)=>s+(p.atual||0),0); }
+function loadPatForm(){
+  document.getElementById("patEspecie").value = DB.patrimonio.especie||0;
+  document.getElementById("patInvest").value = DB.patrimonio.investimentos||0;
+  document.getElementById("patBens").value = DB.patrimonio.bens||0;
+  document.getElementById("patDividasInput").value = DB.patrimonio.dividas||0;
+}
+document.getElementById("patSalvar").addEventListener("click", ()=>{
+  DB.patrimonio.especie = parseFloat(document.getElementById("patEspecie").value)||0;
+  DB.patrimonio.investimentos = parseFloat(document.getElementById("patInvest").value)||0;
+  DB.patrimonio.bens = parseFloat(document.getElementById("patBens").value)||0;
+  DB.patrimonio.dividas = parseFloat(document.getElementById("patDividasInput").value)||0;
+  const liquido = saldoTotal() + cofrinhosTotal() + DB.patrimonio.especie + DB.patrimonio.investimentos + DB.patrimonio.bens - DB.patrimonio.dividas;
+  const mesKey = todayStr().slice(0,7);
+  const hist = DB.patrimonio.historico.filter(h=>h.mes!==mesKey);
+  hist.push({ mes:mesKey, valor:liquido });
+  DB.patrimonio.historico = hist.slice(-12);
+  saveDB(); renderAll();
+});
+function renderPatrimonio(){
+  const cof = cofrinhosTotal();
+  const liquido = saldoTotal() + cof + (DB.patrimonio.especie||0) + (DB.patrimonio.investimentos||0) + (DB.patrimonio.bens||0) - (DB.patrimonio.dividas||0);
+  document.getElementById("patLiquido").textContent = fmt(liquido);
+  document.getElementById("patSaldo").textContent = fmt(saldoTotal());
+  document.getElementById("patCofrinhos").textContent = fmt(cof);
+  document.getElementById("patDividas").textContent = fmt(DB.patrimonio.dividas||0);
+  const hist = DB.patrimonio.historico || [];
+  const maxAbs = Math.max(1, ...hist.map(h=>Math.abs(h.valor)));
+  document.getElementById("patChart").innerHTML = hist.length ? hist.map(h=>{
+    const hgt = Math.max(4, Math.round(Math.abs(h.valor)/maxAbs*100));
+    return `<div class="bar-wrap"><div class="bar" style="height:${hgt}%;background:${h.valor>=0?'var(--good)':'var(--bad)'};"></div><div class="bar-label">${h.mes.slice(5)}/${h.mes.slice(2,4)}</div></div>`;
+  }).join("") : `<div class="empty">Clique em "Salvar" para registrar o primeiro ponto da evolução.</div>`;
+}
+
+/* =========================================================
+   CONTAGEM REGRESSIVA
+   ========================================================= */
+document.getElementById("formEvento").addEventListener("submit", e=>{
+  e.preventDefault();
+  const nome = document.getElementById("evNome").value.trim();
+  const data = document.getElementById("evData").value;
+  if(!nome || !data) return;
+  DB.eventos.push({ id:uid(), nome, data, desc:document.getElementById("evDesc").value.trim() });
+  saveDB(); e.target.reset(); renderAll();
+});
+function deleteEvento(id){ DB.eventos = DB.eventos.filter(e=>e.id!==id); saveDB(); renderAll(); }
+function renderContagem(){
+  const el = document.getElementById("evList");
+  const list = DB.eventos.slice().sort((a,b)=>a.data.localeCompare(b.data));
+  el.innerHTML = list.length ? list.map(ev=>{
+    const diff = new Date(ev.data) - new Date();
+    const past = diff < 0;
+    const abs = Math.abs(diff);
+    const dias = Math.floor(abs/86400000), horas = Math.floor((abs%86400000)/3600000), min = Math.floor((abs%3600000)/60000);
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div><strong>${escapeHtml(ev.nome)}</strong><div class="meta">${new Date(ev.data).toLocaleString("pt-BR")}</div>${ev.desc?`<div class="meta">${escapeHtml(ev.desc)}</div>`:""}</div>
+        <button class="btn ghost small" onclick="deleteEvento('${ev.id}')">Excluir</button>
+      </div>
+      <div style="font-family:Georgia,serif;font-size:19px;margin-top:10px;">
+        ${past ? "Já aconteceu" : `${dias}d ${horas}h ${min}min restantes`}
+      </div>
+    </div>`;
+  }).join("") : `<div class="card empty">Nenhum evento cadastrado ainda.</div>`;
+}
+setInterval(()=>{ const v=document.getElementById("view-contagem"); if(v && v.classList.contains("active")) renderContagem(); }, 60000);
+
+/* =========================================================
+   ASSISTENTE IA
+   ========================================================= */
+const chatLog = document.getElementById("chatLog");
+function addMsg(text, who){
+  const div = document.createElement("div");
+  div.className = "msg " + who;
+  div.textContent = text;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+const aiHelpers = {
+  fmt, saldoTotal, cofrinhosTotal,
+  addTask(nome){ DB.tasks.push({ id:uid(), nome, data:"", prio:"media", done:false }); saveDB(); renderAll(); },
+  addTx(tipo, valor, desc){ DB.tx.push({ id:uid(), tipo, valor, desc, cat:"Outros", data:todayStr() }); saveDB(); renderAll(); }
+};
+const aiBtn = document.getElementById("aiBtn"), aiStatus = document.getElementById("aiStatus");
+function refreshAiBar(){
+  if(MyLifeLLM.ready()){ aiStatus.textContent = "IA no aparelho: pronta (offline)"; aiBtn.style.display = "none"; }
+  else if(!MyLifeLLM.supported()){ aiStatus.textContent = "Assistente local ativo (offline). IA generativa requer WebGPU (iOS 26+)."; aiBtn.style.display = "none"; }
+  else { aiStatus.textContent = "Assistente local ativo (offline)."; aiBtn.style.display = ""; aiBtn.textContent = MyLifeLLM.wasEnabled() ? "Carregar IA no aparelho" : "Ativar IA no aparelho (download único)"; }
+}
+aiBtn.addEventListener("click", async ()=>{
+  aiBtn.disabled = true;
+  try{ await MyLifeLLM.load(p => { aiStatus.textContent = "Baixando/carregando IA… " + Math.round((p.progress||0)*100) + "%"; }); }
+  catch(err){ aiStatus.textContent = "Não consegui ativar a IA: " + err.message; }
+  aiBtn.disabled = false; refreshAiBar();
+});
+refreshAiBar();
+
+const chatHistory = [];
+document.getElementById("formChat").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const input = document.getElementById("chatInput");
+  const msg = input.value.trim();
+  if(!msg) return;
+  addMsg(msg, "user"); input.value = "";
+  const r = MyLifeEngine.answer(msg, DB, aiHelpers);          // 1) regras locais: números exatos, instantâneo
+  if(r.handled || !MyLifeLLM.ready()){ addMsg(r.text, "ai"); return; }
+  addMsg("…", "ai"); const el = chatLog.lastChild;            // 2) conversa livre com a IA do aparelho
+  try{
+    const sys = "Você é o assistente do app MyLife. Responda em português, de forma curta e direta. Use SOMENTE estes dados, sem inventar números:\n" + MyLifeEngine.summary(DB, aiHelpers);
+    chatHistory.push({ role:"user", content: msg });
+    const out = await MyLifeLLM.chat([{ role:"system", content:sys }, ...chatHistory.slice(-6)], t => { el.textContent = t; chatLog.scrollTop = chatLog.scrollHeight; });
+    chatHistory.push({ role:"assistant", content: out });
+  }catch(err){ el.textContent = "Erro na IA do aparelho: " + err.message; }
+});
+
+/* =========================================================
+   CONFIGURAÇÕES
+   ========================================================= */
+function loadConfigForm(){
+  document.getElementById("cfgNome").value = DB.config.nome;
+  document.getElementById("cfgMoeda").value = DB.config.moeda;
+  document.getElementById("cfgSaldoInicial").value = DB.config.saldoInicial;
+}
+document.getElementById("cfgSalvar").addEventListener("click", ()=>{
+  DB.config.nome = document.getElementById("cfgNome").value.trim() || "MyLife";
+  DB.config.moeda = document.getElementById("cfgMoeda").value;
+  DB.config.saldoInicial = parseFloat(document.getElementById("cfgSaldoInicial").value)||0;
+  saveDB(); renderAll();
+});
+document.getElementById("cfgApagar").addEventListener("click", ()=>{
+  if(confirm("Isso vai apagar TODOS os seus dados na nuvem. Confirma?")){
+    DB = emptyDB();
+    saveDB(); loadConfigForm(); loadPatForm(); renderAll();
+  }
+});
+
+/* =========================================================
+   RENDER GERAL
+   ========================================================= */
+function renderDashboard(){
+  const now = new Date();
+  const mesTx = DB.tx.filter(t=>{ const d=new Date(t.data+"T00:00:00"); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); });
+  let inSum=0, outSum=0;
+  mesTx.forEach(t=> t.tipo==="entrada" ? inSum+=t.valor : outSum+=t.valor);
+  document.getElementById("dashSaldo").textContent = fmt(saldoTotal());
+  document.getElementById("dashIn").textContent = fmt(inSum);
+  document.getElementById("dashOut").textContent = fmt(outSum);
+  document.getElementById("dashTasks").textContent = DB.tasks.filter(t=>!t.done).length;
+
+  const months = [];
+  for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(), now.getMonth()-i, 1); months.push(d); }
+  const chartData = months.map(d=>{
+    let s=0;
+    DB.tx.forEach(t=>{ const td=new Date(t.data+"T00:00:00"); if(td.getMonth()===d.getMonth() && td.getFullYear()===d.getFullYear()) s += t.tipo==="entrada"?t.valor:-t.valor; });
+    return { mes:d, valor:s };
+  });
+  const maxAbs = Math.max(1, ...chartData.map(c=>Math.abs(c.valor)));
+  document.getElementById("chart6").innerHTML = chartData.map(c=>{
+    const hgt = Math.max(4, Math.round(Math.abs(c.valor)/maxAbs*100));
+    const label = c.mes.toLocaleDateString("pt-BR",{month:"short"}).replace(".","");
+    return `<div class="bar-wrap"><div class="bar" style="height:${hgt}%;background:${c.valor>=0?'var(--good)':'var(--bad)'};"></div><div class="bar-label">${label}</div></div>`;
+  }).join("");
+
+  const recent = DB.tx.slice().sort((a,b)=>b.data.localeCompare(a.data)).slice(0,6);
+  document.getElementById("dashRecent").innerHTML = recent.length ? recent.map(t=>`
+    <div class="list-row">
+      <div><div>${escapeHtml(t.desc)}</div><div class="meta">${t.data.split("-").reverse().join("/")}</div></div>
+      <span class="${t.tipo==='entrada'?'amt-in':'amt-out'}">${t.tipo==='entrada'?'+':'-'}${fmt(t.valor)}</span>
+    </div>`).join("") : `<div class="empty">Nada por aqui ainda.</div>`;
+}
+
+function renderAll(){
+  renderDashboard(); renderFinanceiro(); renderTarefas(); renderCofrinhos();
+  renderAssinaturas(); renderPatrimonio(); renderContagem();
+}
+
+/* =========================================================
+   PWA: registra o service worker
+   ========================================================= */
+boot();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{ navigator.serviceWorker.register("/sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>
